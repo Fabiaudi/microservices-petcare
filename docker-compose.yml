@@ -1,0 +1,69 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_DATABASE: db_petregister
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_PASSWORD: 123456
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  eureka-server:
+    build: ./eurekaServer
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "9191:9191"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  cadastro-service:
+    build: ./cadastro
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+    environment:
+    - x-api-key=live_IRHPdFXYx71xlN8JSxpRYbsb4yoyy36hHBEn2Hk8HfF5PuA17V7Un9V8VPWpXy8r
+
+  agendamento-service:
+    build: ./agendamento
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+
+  notificacao-service:
+    build: ./notificacao
+    ports:
+      - "8083:8083"
+    depends_on:
+      api-gateway:
+        condition: service_started
